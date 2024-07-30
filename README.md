@@ -1,14 +1,16 @@
 ### [服务定义](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html)
 
-- **airflow-scheduler** - 调度程序监视所有任务和 DAB，然后在任务实例的依赖项完成后触发任务实例
-- **airflow-webserver** - Web服务器，可在 http://localhost:8080 访问
-- **airflow-worker** - 执行调度程序给定任务的工作程序
-- **airflow-triggerer** - 触发器为可延迟任务运行事件循环
-- **airflow-init** - 初始化服务
-- **airflow-cli** - 用于在 Docker 容器中运行 Apache Airflow 的命令行界面（CLI）
-- **postgres** - 数据库
-- **redis** - 将消息从调度程序转发到工作程序的代理 https://redis.io/
-- **flower** - 可选项，用于监测环境的应用程序，可通过 http://localhost:5555 访问。 可以通过添加--profile flower选项来启用flower，例如 `docker compose--profile flower-up`，或者通过在命令行上显式指定它，例如 `docker-compose-up flower`
+| 服务                           | 描述                                                             |
+| ------------------------------ | ---------------------------------------------------------------- |
+| **airflow-scheduler**          | 调度程序监视所有任务和 DAB, 然后在任务实例的依赖项完成后触发任务实例   |
+| **airflow-webserver**          | Web服务器, 可在 http://localhost:8080 访问                        |
+| **airflow-worker**             | 执行调度程序给定任务的工作程序                                      |
+| **airflow-triggerer**          | 触发器为可延迟任务运行事件循环                                      |
+| **airflow-init**               | 初始化服务                                                        |
+| **airflow-cli**                | 用于在 Docker 容器中运行 Apache Airflow 的命令行界面（CLI）         |
+| **postgres**                   | 数据库                                                           |
+| **redis**                      | 将消息从调度程序转发到工作程序的代理 https://redis.io/              |
+| **flower**                     | 可选项，用于监测环境的应用程序，可通过 http://localhost:5555 访问。 可以通过添加--profile flower选项来启用flower，例如 `docker compose--profile flower-up`，或者通过在命令行上显式指定它，例如 `docker-compose-up flower` |
 
 ### CeleryExecutor与Redis和PostgreSQL的基本Airflow集群配置。
 
@@ -25,12 +27,12 @@
 
 - 计划将服务部署到 `/opt/appdata/airflow/` 中，容器中的目录映射到 data 目录下
 
-/opt/data/airflow/data/
-├── dags                  #-- DAG 文件存放位置
-├── logs                   #-- 包含来自任务执行和调度程序的日志
+/opt/data/airflow/data/ 
+├── dags                  #-- DAG 文件存放位置 
+├── logs                   #-- 包含来自任务执行和调度程序的日志 
 ├── config               #-- 可以添加自定义日志解析器或添加airflow_local_settings.py以配置集群策略 
-├── plugins             #-- 自定义插件存放位置
-└── postgres          #-- posegresql 中的data目录映射位置
+├── plugins             #-- 自定义插件存放位置 
+└── postgres          #-- posegresql 中的data目录映射位置 
 
 ### 部署
 
