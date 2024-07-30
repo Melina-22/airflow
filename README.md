@@ -39,7 +39,7 @@
 
 - 计划将服务部署到 `/opt/appdata/airflow/` 中，容器中的目录映射到 data 目录下
 
-  /opt/data/airflow/data/
+  /opt/data/airflow/data/  
   ├── dags                  # -- DAG 文件存放位置  
   ├── logs                   # -- 包含来自任务执行和调度程序的日志  
   ├── config               # -- 可以添加自定义日志解析器或添加airflow_local_settings.py以配置集群策略  
