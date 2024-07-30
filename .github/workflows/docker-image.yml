@@ -1,0 +1,66 @@
+# 工作流名称
+name: Create and publish a Docker image
+
+# 指定触发工作流的事件
+on:
+  # 当代码被推送到仓库时触发工作流
+  push:
+    # 当代码被推送到 main 分支时触发工作流
+    branches: [ "main" ] 
+  # 当有人创建、更新或重新打开拉取请求时触发工作流
+  pull_request:
+    # 当拉取请求的目标分支是 main 时触发工作流
+    branches: [ "main" ]
+
+# 定义工作流中使用的环境变量
+env:
+  # GitHub 容器注册表的域名
+  REGISTRY: ghcr.io
+  # Docker 镜像的名称，通常是仓库的名称
+  IMAGE_NAME: ${{ github.repository }}
+
+# 定义工作流中的任务
+jobs:
+  build-and-push-image:
+    # 设置运行环境，使用最新版本的 Ubuntu
+    runs-on: ubuntu-latest
+    # 设置对 `GITHUB_TOKEN` 的权限，以便在操作中使用
+    permissions:
+      contents: read           # 读取仓库内容
+      packages: write          # 写入到 GitHub 包（容器注册表）
+      attestations: write      # 写入构建证明
+      id-token: write          # 写入 ID 令牌（用于身份验证）
+    # 任务步骤
+    steps:
+      # 第一步: 检出仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      # 第二步: 登录到 GitHub 容器注册表
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}            # 容器注册表域名
+          username: ${{ github.actor }}            # 使用 GitHub 用户名进行身份验证
+          password: ${{ secrets.GITHUB_TOKEN }}    # 使用 GitHub 自动生成的 token 进行身份验证
+      # 第三步: 使用docker/metadata-action 提取将应用于 Docker 镜像的标记和标签（tags 和 labels）, id: meta 允许在后续步骤中引用此步骤的输出, images 值提供标记和标签的基本名称。 https://github.com/docker/metadata-action#about
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}  # 定义镜像的基本名称
+      # 第四步: 构建并推送 Docker 镜像 https：//github.com/docker/build-push-action#usage
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .    # 设置 Docker 构建的上下文路径
+          push: true    # 构建成功后将镜像推送到注册表
+          tags: ${{ steps.meta.outputs.tags }}  # 使用 "meta" 步骤的输出tags
+          labels: ${{ steps.meta.outputs.labels }} # # 使用 "meta" 步骤的输出labels
+      # 第五步：生成镜像的构建证明 https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}  # 镜像的名称
+          subject-digest: ${{ steps.push.outputs.digest }}  # 镜像的哈希值（摘要）
+          push-to-registry: true  # 将构建证明推送到注册表
