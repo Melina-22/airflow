@@ -1,0 +1,294 @@
+# 根据一个或多个贡献者许可协议授权给Apache软件基金会（ADF）。
+# 有关版权所有权的详细信息，请参见此工作的NOTICE文件。
+# ASF根据Apache许可证2.0版（the License）许可此文件；除非符合许可证，否则你不能使用此文件。你可以在以下地址获得许可证：http://www.apache.org/licenses/LICENSE-2.0
+# 除非适用法律要求或书面同意，否则根据许可证分发的软件是按“原样”分发的，没有任何形式的明示或暗示担保。参见许可证以了解特定语言管理权限和限制。
+#
+# 此文件包含多个服务定义，详见：https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html
+# airflow-scheduler - 调度程序监视所有任务和 DAB，然后在任务实例的依赖项完成后触发任务实例
+# airflow-webserver - Web服务器，可在 http://localhost:8080 访问
+# airflow-worker - 执行调度程序给定任务的工作程序
+# airflow-triggerer - 触发器为可延迟任务运行事件循环
+# airflow-init - 初始化服务
+# postgres - 数据库
+# redis - 将消息从调度程序转发到工作程序的代理 https://redis.io/
+# flower - 可选项，用于监测环境的应用程序，可通过 http://localhost:5555 访问。 可以通过添加--profile flower选项来启用flower，例如docker compose--profile flower-up，或者通过在命令行上显式指定它，例如docker-compose-up flower
+#
+# 容器中的某些目录已装载，这意味着其内容在计算机和容器之间同步。
+# ./dags- 您可以将 DAG 文件放在这里
+# ./logs- 包含来自任务执行和调度程序的日志
+# ./config- 可以添加自定义日志解析器或添加airflow_local_settings.py以配置集群策略
+# ./plugins- 可以把自定义插件放在这里
+#
+# CeleryExecutor与Redis和PostgreSQL的基本Airflow集群配置。
+# 警告：此配置仅用于本地开发。不要在生产部署中使用它。
+# 此配置支持使用环境变量或.env文件进行基本配置，支持以下变量：
+# AIRFLOW_IMAGE_NAME           - 用于运行Airflow的Docker镜像名称。默认值：apache/airflow:2.9.3
+# AIRFLOW_UID                  - Airflow容器中的用户ID。默认值：50000
+# AIRFLOW_PROJ_DIR             - 所有文件将被挂载到的基本路径。默认值：.
+# 这些配置主要在独立测试/运行Airflow时有用。
+# _AIRFLOW_WWW_USER_USERNAME   - 管理员帐户的用户名（如果需要）。默认值：airflow
+# _AIRFLOW_WWW_USER_PASSWORD   - 管理员帐户的密码（如果需要）。默认值：airflow
+# _PIP_ADDITIONAL_REQUIREMENTS - 启动所有容器时添加的额外PIP要求，默认为 ''
+#                                仅用于快速检查或测试，每次启动服务时都会重新安装这些额外的 Python 包，会导致启动时间变长。
+#                                更好的方法是构建一个自定义镜像或扩展官方镜像，详见 https://airflow.apache.org/docs/docker-stack/build.html.
+# 请根据需要修改此文件。
+#
+#
+# 部署的时候把基本路径 AIRFLOW_PROJ_DIR 设置成了 ./data，postgresql的data文件也放了进来
+# mkdir -p ./data/dags ./data/logs ./data/plugins ./data/config ./data/postgres
+# echo -e "AIRFLOW_UID=$(id -u)" > .env
+# 
+---
+x-airflow-common:
+  # 定义自定义扩展字段
+  &airflow-common # 定义锚点 airflow-common
+  # 为了添加自定义依赖或升级提供程序包，你可以使用你扩展的镜像。
+  # 注释掉image行，将Dockerfile放置在docker-compose.yaml所在的目录中并取消注释下面的"build"行。然后运行`docker-compose build`构建镜像。
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.9.3}
+  # build: .
+  environment:
+    &airflow-common-env # 定义锚点 airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor # 设置Airflow执行器为CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow # 数据库连接字符串
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow # Celery结果后端设置为PostgreSQL
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0 # Celery任务队列设置为Redis
+    AIRFLOW__CORE__FERNET_KEY: '' # 加密密钥（可以留空）
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true' # 创建时DAG是否暂停
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'true' # 是否加载示例DAG
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session' # API认证后端
+    # yamllint disable rule:line-length
+    # 在调度器上使用简单的HTTP服务器进行健康检查
+    # 详见：https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
+    # yamllint enable rule:line-length
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true' # 启用调度器健康检查
+    # 警告：仅在快速检查时使用_PIP_ADDITIONAL_REQUIREMENTS选项
+    # 对于其他目的（开发、测试，特别是生产使用），请构建/扩展Airflow镜像。
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # 下面的行可用于设置存储在本地配置文件夹中的自定义配置文件
+    # 如果想要使用它，请取消注释并替换airflow.cfg为你的配置文件名称
+    # AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    TZ: Asia/Shanghai
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags # 挂载DAG目录
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs # 挂载日志目录
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config # 挂载配置目录
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins # 挂载插件目录
+  user: "${AIRFLOW_UID:-50000}:0" # 设置容器内的用户和组ID
+  depends_on:
+    &airflow-common-depends-on # 定义锚点 airflow-common-depends-on
+    redis:
+      condition: service_healthy # 健康检查
+    postgres:
+      condition: service_healthy # 健康检查
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow # 数据库用户名
+      POSTGRES_PASSWORD: airflow # 数据库密码
+      POSTGRES_DB: airflow # 数据库名称
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}/postgres:/var/lib/postgresql/data # 持久化数据库数据
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"] # 健康检查命令
+      interval: 10s # 检查间隔时间
+      retries: 5 # 重试次数
+      start_period: 5s # 起始等待时间
+    restart: always # 始终重启
+
+  redis:
+    # 将消息从调度程序转发到工作程序的代理 https://redis.io/
+    # Redis仅限于7.2-bookworm，原因是许可证变更
+    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
+    image: redis:7.2-bookworm
+    expose:
+      - 6379 # 暴露端口
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"] # 健康检查命令
+      interval: 10s # 检查间隔时间
+      timeout: 30s # 检查超时时间
+      retries: 50 # 重试次数
+      start_period: 30s # 起始等待时间
+    restart: always # 始终重启
+
+  airflow-webserver:
+    # Web服务器，可在 http://localhost:8080 访问
+    <<: *airflow-common
+    command: webserver # 运行webserver命令
+    ports:
+      - "8080:8080" # 映射端口
+    healthcheck: # 健康检查
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on # 继承锚点 airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully # 等待airflow-init服务成功完成后再启动airflow-webserver
+
+  airflow-scheduler:
+    # 调度程序监视所有任务和 DAB，然后在任务实例的依赖项完成后触发任务实例
+    <<: *airflow-common
+    command: scheduler # 运行scheduler命令
+    healthcheck: # 健康检查
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully # 等待airflow-init服务成功完成后再启动airflow-scheduler
+
+  airflow-worker:
+    # 执行调度程序给定任务的工作程序
+    <<: *airflow-common
+    command: celery worker # 运行celery worker命令
+    healthcheck:
+      # yamllint disable rule:line-length
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      # 需要适当处理Celery worker的温和关闭
+      # https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      DUMB_INIT_SETSID: "0" # 设置环境变量以确保信号传递正确处理
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully # 等待airflow-init服务成功完成后再启动airflow-worker
+
+  airflow-triggerer:
+    # 触发器为可延迟任务运行事件循环
+    <<: *airflow-common
+    command: triggerer # 指定命令来启动Triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"'] # 使用CMD-SHELL方式运行健康检查命令，检查TriggererJob的状态
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully # 等待airflow-init服务成功完成后再启动airflow-triggerer
+
+  airflow-init:
+    # 初始化服务
+    <<: *airflow-common
+    entrypoint: /bin/bash # 指定容器的入口点为bash shell
+    # yamllint disable rule:line-length
+    command:
+      - -c
+      - |
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
+          echo "If you are on Linux, you SHOULD follow the instructions below to set "
+          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
+          echo "For other operating systems you can get rid of the warning with manually created .env file:"
+          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
+          echo
+        fi
+        one_meg=1048576
+        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
+        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
+        disk_available=$$(df / | tail -1 | awk '{print $$4}')
+        warning_resources="false"
+        if (( mem_available < 4000 )) ; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
+          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
+          echo
+          warning_resources="true"
+        fi
+        if (( cpus_available < 2 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
+          echo "At least 2 CPUs recommended. You have $${cpus_available}"
+          echo
+          warning_resources="true"
+        fi
+        if (( disk_available < one_meg * 10 )); then
+          echo
+          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
+          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
+          echo
+          warning_resources="true"
+        fi
+        if [[ $${warning_resources} == "true" ]]; then
+          echo
+          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
+          echo "Please follow the instructions to increase amount of resources available:"
+          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
+          echo
+        fi
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    # yamllint enable rule:line-length
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true' # 设置环境变量以执行数据库迁移
+      _AIRFLOW_WWW_USER_CREATE: 'true' # 设置环境变量以创建管理员用户
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow} # 指定管理员用户名
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow} # 指定管理员用户密码
+      _PIP_ADDITIONAL_REQUIREMENTS: '' # 设置额外的PIP需求，默认为空
+    user: "0:0" # 以root用户启动容器
+    volumes:
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources # 挂载本地目录到容器中的/sources目录
+
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug # 设置调试模式
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0" # 设置环境变量以跳过连接检查
+    # 入口点问题的解决办法，详见: https://github.com/apache/airflow/issues/16252
+    command:
+      - bash
+      - -c
+      - airflow
+
+  flower:
+    # 用于监测环境的应用程序，可通过 http://localhost:5555 访问。 
+    # 可选项，可以通过添加--profile flower选项来启用flower，例如docker compose--profile flower-up，或者通过在命令行上显式指定它，例如docker-compose-up flower
+    <<: *airflow-common
+    command: celery flower # 指定命令来启动Celery Flower
+    profiles:
+      - flower # 设置Flower模式
+    ports:
+      - "5555:5555" # 映射本地端口5555到容器端口5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"] # 使用curl命令检查Flower服务的健康状态
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully # 等待airflow-init服务成功完成后再启动flower
+
+volumes:
+  postgres-db-volume: # 定义一个名为postgres-db-volume的Docker卷，用于持久化PostgreSQL数据
+    driver: local # 使用本地驱动
+    driver_opts:
+      type: none # 绑定挂载
+      o: bind # 绑定到主机路径
+      device: ${AIRFLOW_PROJ_DIR:-.} # 主机上的路径（请确保这个目录已经存在或者 Docker 可以创建它）
