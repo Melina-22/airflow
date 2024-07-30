@@ -1,9 +1,3 @@
-### 许可证
-
-- 根据一个或多个贡献者许可协议授权给Apache软件基金会（ADF）。有关版权所有权的详细信息，请参见此工作的NOTICE文件。
-- ASF根据Apache许可证2.0版（the License）许可此文件；除非符合许可证，否则你不能使用此文件。你可以在以下地址获得许可证：http://www.apache.org/licenses/LICENSE-2.0
-- 除非适用法律要求或书面同意，否则根据许可证分发的软件是按“原样”分发的，没有任何形式的明示或暗示担保。参见许可证以了解特定语言管理权限和限制。
-
 ### [服务定义](https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html)
 
 - **airflow-scheduler** - 调度程序监视所有任务和 DAB，然后在任务实例的依赖项完成后触发任务实例
