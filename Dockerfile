@@ -8,5 +8,5 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
   
-RUN pip install --no-cache-dir "apache-airflow==2.9.3" -r /requirements.txt
+RUN pip install --no-cache-dir -r /requirements.txt
 USER airflow
