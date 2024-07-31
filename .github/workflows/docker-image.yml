@@ -30,14 +30,14 @@ jobs:
       packages: write          # 写入到 GitHub 包（容器注册表）
       attestations: write      # 写入构建证明
       id-token: write          # 写入 ID 令牌（用于身份验证）
-    # 任务步骤
+    # 任务步骤, action版本查看 https://github.com/marketplace?type=actions
     steps:
       # 第一步: 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v4
       # 第二步: 登录到 GitHub 容器注册表
       - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}            # 容器注册表域名
           username: ${{ github.actor }}            # 使用 GitHub 用户名进行身份验证
@@ -45,13 +45,13 @@ jobs:
       # 第三步: 使用docker/metadata-action 提取将应用于 Docker 镜像的标记和标签（tags 和 labels）, id: meta 允许在后续步骤中引用此步骤的输出, images 值提供标记和标签的基本名称。 https://github.com/docker/metadata-action#about
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}  # 定义镜像的基本名称
       # 第四步: 构建并推送 Docker 镜像 https：//github.com/docker/build-push-action#usage
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        uses: docker/build-push-action@v5
         with:
           context: .    # 设置 Docker 构建的上下文路径
           push: true    # 构建成功后将镜像推送到注册表
