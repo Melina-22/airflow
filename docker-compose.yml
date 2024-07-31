@@ -3,8 +3,8 @@ x-airflow-common:
   &airflow-common # 定义锚点 airflow-common
   # 为了添加自定义依赖或升级提供程序包，你可以使用你扩展的镜像。
   # 注释掉image行，将Dockerfile放置在docker-compose.yaml所在的目录中并取消注释下面的"build"行。然后运行`docker-compose build`构建镜像。
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.9.3}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.9.3}
+  build: .
   environment:
     &airflow-common-env # 定义锚点 airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor # 设置Airflow执行器为CeleryExecutor
