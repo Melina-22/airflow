@@ -37,14 +37,14 @@
 
 ### 容器中的目录
 
-- 计划将服务部署到 `/opt/appdata/airflow/` 中，容器中的目录映射到 data 目录下
+- 计划将服务部署到 `/opt/appdata/airflow/` 中，容器中的目录映射到 `/opt/appdata/airflow/data` 目录下
 
   /opt/data/airflow/data/  
-  ├── dags                  # -- DAG 文件存放位置  
-  ├── logs                   # -- 包含来自任务执行和调度程序的日志  
-  ├── config               # -- 可以添加自定义日志解析器或添加airflow_local_settings.py以配置集群策略  
-  ├── plugins             # -- 自定义插件存放位置  
-  └── postgres          # -- posegresql 中的data目录映射位置
+    ├── dags                  # -- DAG 文件存放位置  
+    ├── logs                  # -- 包含来自任务执行和调度程序的日志  
+    ├── config                # -- 可以添加自定义日志解析器或添加airflow_local_settings.py以配置集群策略  
+    ├── plugins               # -- 自定义插件存放位置  
+    └── postgres              # -- posegresql 中的data目录映射位置
 
 ### 部署
 
@@ -55,7 +55,7 @@ cd /opt/appdata/airflow
 # 创建文件夹
 mkdir -p ./data/dags ./data/logs ./data/plugins ./data/config ./data/postgres
 
-# 将当前用户id写入 .env 环境变量文件中
+# 将当前用户id写入 .env 环境变量文件中, 因为准备把映射文件统一放到data目录下, 环境变量中还要再加一个变量 AIRFLOW_PROJ_DIR=./data
 echo -e "AIRFLOW_UID=$(id -u)" > .env
 
 # 初始化数据库
