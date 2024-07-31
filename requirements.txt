@@ -1,0 +1,4 @@
+openpyxl
+XlsxWriter
+pillow
+python-barcode
