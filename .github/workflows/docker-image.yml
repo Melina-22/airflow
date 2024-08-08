@@ -60,12 +60,12 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:2.9.3
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+            #${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
           labels: ${{ steps.meta.outputs.labels }} # # 使用 "meta" 步骤的输出labels
       # 第五步：生成镜像的构建证明 https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
-      #- name: Generate artifact attestation
-      #  uses: actions/attest-build-provenance@v1
-      #  with:
-      #    subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}  # 镜像的名称
-      #    subject-digest: ${{ steps.push.outputs.digest }}  # 镜像的哈希值（摘要）
-      #    push-to-registry: true  # 将构建证明推送到注册表
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}  # 镜像的名称
+          subject-digest: ${{ steps.push.outputs.digest }}  # 镜像的哈希值（摘要）
+          push-to-registry: true  # 将构建证明推送到注册表
