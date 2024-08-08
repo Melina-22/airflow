@@ -59,7 +59,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:2.9.3
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+            #${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
           #tags: ${{ steps.meta.outputs.tags }}  # 使用 "meta" 步骤的输出tags
           labels: ${{ steps.meta.outputs.labels }} # # 使用 "meta" 步骤的输出labels
       # 第五步：生成镜像的构建证明 https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
